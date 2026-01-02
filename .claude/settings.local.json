@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(task-orchestrator:task-orchestration)",
+      "Bash(mkdir:*)",
+      "Bash(docker run:*)",
+      "Bash(cat:*)",
+      "WebSearch",
+      "WebFetch(domain:mhr007.medium.com)",
+      "WebFetch(domain:www.deeppast.org)",
+      "Bash(git init:*)",
+      "Bash(git branch:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

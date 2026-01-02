@@ -1,0 +1,67 @@
+# Data files
+data/raw/*
+data/processed/*
+data/external/*
+!data/*/.gitkeep
+
+# Model files
+models/*
+!models/.gitkeep
+
+# Submissions
+submissions/*
+!submissions/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Kaggle
+*.csv
+*.parquet
+*.json
+!.mcp.json
+!.claude/*.json
+!.taskorchestrator/*.yaml
+
+# Large files
+*.zip
+*.tar.gz
+*.h5
+*.pkl
+*.pt
+*.pth
+*.bin
+*.onnx
+
+# Logs
+*.log
+logs/
+
+# Secrets
+.env
+*.key

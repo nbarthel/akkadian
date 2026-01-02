@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "task-orchestrator": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-v",
+        "mcp-task-data:/app/data",
+        "-e",
+        "DATABASE_PATH=/app/data/tasks.db",
+        "-e",
+        "MCP_TRANSPORT=stdio",
+        "ghcr.io/jpicklyk/task-orchestrator:latest"
+      ]
+    }
+  }
+}

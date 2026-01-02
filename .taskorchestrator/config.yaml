@@ -1,0 +1,42 @@
+# Task Orchestrator Configuration
+# Project: Akkadian (Kaggle Competition)
+
+project:
+  name: "akkadian"
+  description: "Kaggle competition workspace for Akkadian cuneiform translation"
+
+# Status workflow configuration
+workflows:
+  default_flow:
+    - backlog
+    - pending
+    - in-progress
+    - testing
+    - completed
+
+  # For documentation tasks (no testing required)
+  documentation_flow:
+    - backlog
+    - pending
+    - in-progress
+    - in-review
+    - completed
+
+# Feature status flow
+feature_flow:
+  - draft
+  - planning
+  - ready
+  - in-development
+  - testing
+  - completed
+
+# Specialist routing
+routing:
+  default_specialist: "Implementation Specialist"
+  escalation_specialist: "Senior Engineer"
+
+# Parallel execution limits
+execution:
+  max_parallel_tasks: 3
+  batch_timeout_minutes: 30
