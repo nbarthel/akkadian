@@ -7,6 +7,10 @@ data/external/*
 # Model files
 models/*
 !models/.gitkeep
+outputs/
+
+# Claude Code worktrees
+.claude/worktrees/
 
 # Submissions
 submissions/*
@@ -57,6 +61,7 @@ Thumbs.db
 *.pth
 *.bin
 *.onnx
+*.safetensors
 
 # Logs
 *.log
