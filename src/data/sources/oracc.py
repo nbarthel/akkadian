@@ -120,7 +120,7 @@ def _download_project(project: str, cache_dir: Path) -> Optional[Path]:
     url = f"{ORACC_BASE_URL}/{project}/json/{project.split('/')[-1]}.zip"
     log.info(f"    Downloading {url}")
     try:
-        resp = requests.get(url, timeout=60)
+        resp = requests.get(url, timeout=60, verify=False)
         resp.raise_for_status()
     except requests.RequestException as e:
         log.warning(f"    Failed to download {project}: {e}")
