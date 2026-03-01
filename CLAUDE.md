@@ -126,7 +126,7 @@ Sources: kaggle (1.5K), oare_sentences (8.4K), hf_phucthaiv02 (83K), hf_cipher (
 
 ## GPU Setup (AMD Strix Halo / WSL2)
 
-Local GPU: **AMD Radeon 8060S** (gfx1151 / RDNA 3.5), 15.8 GB VRAM, 40 CUs.
+Local GPU: **AMD Radeon 8060S** (gfx1151 / RDNA 3.5), 96 GB unified memory (15.8 GB WDDM budget via DXG), 40 CUs.
 
 ```bash
 # Activate GPU environment before training

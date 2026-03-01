@@ -40,7 +40,12 @@ def load_phase_data(data_dir: Path, phase: int):
 
     train_df = pd.read_parquet(data_dir / 'train.parquet')
     val_df = pd.read_parquet(data_dir / 'val.parquet')
-    comp_df = pd.read_parquet(data_dir / 'val_competition.parquet')
+    comp_path = data_dir / 'val_competition.parquet'
+    if comp_path.exists():
+        comp_df = pd.read_parquet(comp_path)
+    else:
+        # Fallback: sample from val set when competition data unavailable
+        comp_df = val_df.sample(n=min(100, len(val_df)), random_state=42).reset_index(drop=True)
 
     if phase == 1:
         train_df = train_df[train_df['quality'] == 'gold'].reset_index(drop=True)
@@ -67,14 +72,12 @@ def preprocess_function(examples, tokenizer, prefix, max_length=512,
         inputs,
         max_length=src_len,
         truncation=True,
-        padding='max_length'
     )
 
     labels = tokenizer(
         targets,
         max_length=tgt_len,
         truncation=True,
-        padding='max_length'
     )
 
     model_inputs['labels'] = labels['input_ids']
@@ -129,6 +132,38 @@ def create_compute_metrics(tokenizer):
     return compute_metrics
 
 
+class ProgressLogCallback(TrainerCallback):
+    """Write training progress to a log file with explicit flush for monitoring."""
+
+    def __init__(self, log_path, log_every=50):
+        self.log_path = log_path
+        self.log_every = log_every
+        self.f = open(log_path, 'w')
+        self.f.write("Training progress log\n")
+        self.f.flush()
+
+    def on_train_begin(self, args, state, control, **kwargs):
+        self.f.write(f"Training started: max_steps={state.max_steps} epochs={args.num_train_epochs}\n")
+        self.f.flush()
+
+    def on_step_end(self, args, state, control, **kwargs):
+        if state.global_step <= 5 or state.global_step % self.log_every == 0:
+            loss = state.log_history[-1].get('loss', '?') if state.log_history else '?'
+            self.f.write(f"step={state.global_step}/{state.max_steps} epoch={state.epoch:.3f} loss={loss}\n")
+            self.f.flush()
+
+    def on_log(self, args, state, control, **kwargs):
+        logs = kwargs.get('logs', {})
+        if logs:
+            line = " ".join(f"{k}={v}" for k, v in logs.items())
+            self.f.write(f"[LOG] step={state.global_step} {line}\n")
+            self.f.flush()
+
+    def on_train_end(self, args, state, control, **kwargs):
+        self.f.write("Training complete\n")
+        self.f.close()
+
+
 class FullValCallback(TrainerCallback):
     """Callback to score predictions on the full validation set after each eval."""
 
@@ -171,12 +206,15 @@ def train(args):
     print(f"Loading data (phase {phase})...")
     if phase > 0:
         train_df, val_df, comp_df = load_phase_data(data_dir, phase)
-        # Test data for submission comes from raw dir
+        # Test data for submission comes from raw dir (optional)
         raw_dir = data_dir.parent / 'raw'
-        test_df = pd.read_csv(raw_dir / 'test.csv')
+        test_csv = raw_dir / 'test.csv'
+        test_df = pd.read_csv(test_csv) if test_csv.exists() else None
         print(f"Training samples: {len(train_df)}")
         print(f"Validation samples: {len(val_df)}")
         print(f"Competition val samples: {len(comp_df)}")
+        if test_df is not None:
+            print(f"Test samples: {len(test_df)}")
     else:
         train_df, test_df = load_data(data_dir)
         print(f"Training samples: {len(train_df)}")
@@ -253,12 +291,13 @@ def train(args):
         logging_steps=50,
         predict_with_generate=True,
         generation_max_length=gen_max_length,
-        fp16=torch.cuda.is_available(),
+        bf16=torch.cuda.is_available(),
         load_best_model_at_end=True,
         metric_for_best_model='geo_mean',
         greater_is_better=True,
         save_total_limit=2,
         report_to='none',
+        disable_tqdm=True,
         **strategy_kwargs,
     )
 
@@ -284,6 +323,10 @@ def train(args):
         **{_tok_kwarg: tokenizer},
     )
 
+    # Add progress logging callback
+    progress_log = Path(args.output_dir) / 'progress.log'
+    trainer.add_callback(ProgressLogCallback(str(progress_log)))
+
     # Add full val callback for phase-based training
     if full_val_dataset is not None:
         trainer.add_callback(
@@ -306,48 +349,51 @@ def train(args):
     tokenizer.save_pretrained(best_dir)
     print(f"\nBest model saved to: {best_dir}")
 
-    # Generate test predictions
-    print("\nGenerating test predictions...")
-    test_inputs = [prefix + text for text in test_df['transliteration']]
-    test_encodings = tokenizer(
-        test_inputs,
-        max_length=src_len,
-        truncation=True,
-        padding=True,
-        return_tensors='pt'
-    ).to(device)
+    # Generate test predictions (only if test data is available)
+    if test_df is not None:
+        print("\nGenerating test predictions...")
+        test_inputs = [prefix + text for text in test_df['transliteration']]
+        test_encodings = tokenizer(
+            test_inputs,
+            max_length=src_len,
+            truncation=True,
+            padding=True,
+            return_tensors='pt'
+        ).to(device)
 
-    model.train(False)
-    with torch.no_grad():
-        outputs = model.generate(
-            input_ids=test_encodings['input_ids'],
-            attention_mask=test_encodings['attention_mask'],
-            max_length=tgt_len,
-            num_beams=5,
-            early_stopping=True,
-            no_repeat_ngram_size=3,
-        )
+        model.train(False)
+        with torch.no_grad():
+            outputs = model.generate(
+                input_ids=test_encodings['input_ids'],
+                attention_mask=test_encodings['attention_mask'],
+                max_length=tgt_len,
+                num_beams=5,
+                early_stopping=True,
+                no_repeat_ngram_size=3,
+            )
 
-    predictions = tokenizer.batch_decode(outputs, skip_special_tokens=True)
+        predictions = tokenizer.batch_decode(outputs, skip_special_tokens=True)
 
-    # Create submission
-    submission = pd.DataFrame({
-        'id': test_df['id'],
-        'translation': predictions
-    })
+        # Create submission
+        submission = pd.DataFrame({
+            'id': test_df['id'],
+            'translation': predictions
+        })
 
-    sub_name = f'byt5_phase{phase}.csv' if phase > 0 else 'baseline_byt5.csv'
-    submission_path = Path(args.submission_dir) / sub_name
-    submission_path.parent.mkdir(parents=True, exist_ok=True)
-    submission.to_csv(submission_path, index=False)
-    print(f"Submission saved to: {submission_path}")
+        sub_name = f'byt5_phase{phase}.csv' if phase > 0 else 'baseline_byt5.csv'
+        submission_path = Path(args.submission_dir) / sub_name
+        submission_path.parent.mkdir(parents=True, exist_ok=True)
+        submission.to_csv(submission_path, index=False)
+        print(f"Submission saved to: {submission_path}")
 
-    # Print predictions
-    print("\nTest Predictions:")
-    for i, (src, pred) in enumerate(zip(test_df['transliteration'], predictions)):
-        print(f"\n--- Sample {i} ---")
-        print(f"Source: {src[:80]}...")
-        print(f"Translation: {pred[:150]}...")
+        # Print predictions
+        print("\nTest Predictions:")
+        for i, (src, pred) in enumerate(zip(test_df['transliteration'], predictions)):
+            print(f"\n--- Sample {i} ---")
+            print(f"Source: {src[:80]}...")
+            print(f"Translation: {pred[:150]}...")
+    else:
+        print("\nSkipping test predictions (no test.csv available)")
 
     return validation_results
 
