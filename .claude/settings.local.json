@@ -12,5 +12,9 @@
       "Bash(git branch:*)",
       "Bash(git add:*)"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "task-orchestrator"
+  ],
+  "enableAllProjectMcpServers": true
 }

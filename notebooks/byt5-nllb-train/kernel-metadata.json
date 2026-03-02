@@ -1,0 +1,17 @@
+{
+  "id": "nicbarthelemy1/akkadian-byt5-nllb-train",
+  "title": "Akkadian ByT5 + NLLB Distillation Training",
+  "code_file": "../byt5_nllb_train.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "competition_sources": [
+    "deep-past-initiative-machine-translation"
+  ],
+  "dataset_sources": [
+    "nicbarthelemy1/akkadian-assembled-161k",
+    "nicbarthelemy1/akkadian-nllb-translations"
+  ]
+}

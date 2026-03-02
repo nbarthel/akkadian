@@ -1,0 +1,16 @@
+{
+  "id": "nicbarthelemy1/akkadian-nllb-sequence-level-distillation",
+  "title": "Akkadian NLLB Sequence-Level Distillation",
+  "code_file": "../nllb_distill.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "competition_sources": [
+    "deep-past-initiative-machine-translation"
+  ],
+  "dataset_sources": [
+    "nicbarthelemy1/akkadian-assembled-161k"
+  ]
+}
